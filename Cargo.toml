@@ -1,0 +1,18 @@
+[package]
+name = "aoc2022"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = "*"
+regex = "*"
+aoc-runner = "*"
+aoc-runner-derive = "*"
+aoc-helpers = { git = "https://bitbucket.org/auralgeek/aoc-helpers.git" }
+rayon = "*"
+termion = "*"
+nalgebra = "*"
+itertools = "*"
+scan_fmt = "*"
