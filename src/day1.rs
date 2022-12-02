@@ -1,7 +1,7 @@
-use std::collections::{HashMap, HashSet};
-use std::fs::read_to_string;
 use regex::Regex;
 use scan_fmt::{scan_fmt, scan_fmt_some};
+use std::collections::{HashMap, HashSet};
+use std::fs::read_to_string;
 
 type Z = u64;
 
@@ -36,8 +36,8 @@ pub fn part2(input: &[Z]) -> Z {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::fs::read_to_string;
     use scan_fmt::{scan_fmt, scan_fmt_some};
+    use std::fs::read_to_string;
 
     #[test]
     fn test_part1() {
@@ -57,7 +57,8 @@ mod test {
     fn test_scan_fmt() {
         let (a, b, c) = scan_fmt!("hello 0x12 345 bye",            // input
                                   "hello {x} {} {}",               // format
-                                  [hex u8], i32, String).unwrap(); // types
+                                  [hex u8], i32, String)
+        .unwrap(); // types
         assert_eq!(a, 0x12);
         assert_eq!(b, 345);
         assert_eq!(c, "bye");
@@ -67,9 +68,12 @@ mod test {
                                   u16, u8).unwrap(); // type
         */
 
-        let (a, b) = scan_fmt_some!("hello 12 345", // input
-                                    "hello {} {}",  // format
-                                    u8, i32);       // types
+        let (a, b) = scan_fmt_some!(
+            "hello 12 345", // input
+            "hello {} {}",  // format
+            u8,
+            i32
+        ); // types
         assert_eq!(a, Some(12));
         assert_eq!(b, Some(345));
     }
