@@ -1,6 +1,4 @@
-use regex::Regex;
 use scan_fmt::scan_fmt;
-use std::collections::{HashMap, HashSet};
 
 #[aoc_generator(day2)]
 pub fn load_input(input: &str) -> Vec<(char, char)> {

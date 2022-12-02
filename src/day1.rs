@@ -1,8 +1,3 @@
-use regex::Regex;
-use scan_fmt::{scan_fmt, scan_fmt_some};
-use std::collections::{HashMap, HashSet};
-use std::fs::read_to_string;
-
 type Z = u64;
 
 #[aoc_generator(day1)]
