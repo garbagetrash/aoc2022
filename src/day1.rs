@@ -6,7 +6,7 @@ pub fn load_input(input: &str) -> Vec<Z> {
     let mut thissum: Z = 0;
     for line in input.lines() {
         //println!("{}", line);
-        if line == "" {
+        if line.is_empty() {
             sums.push(thissum);
             thissum = 0;
         } else {
@@ -23,7 +23,7 @@ pub fn part1(input: &[Z]) -> Z {
 
 #[aoc(day01, part2)]
 pub fn part2(input: &[Z]) -> Z {
-    let mut temp: Vec<_> = input.iter().copied().collect();
+    let mut temp: Vec<_> = input.to_vec();
     temp.sort();
     temp.iter().rev().take(3).sum::<Z>()
 }
