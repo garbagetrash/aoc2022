@@ -1,11 +1,13 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use regex::Regex;
+use scan_fmt::scan_fmt;
 
 #[aoc_generator(dayNN)]
 pub fn load_input(input: &str) -> Vec<u64> {
     let mut output = vec![];
     for line in input.lines() {
         output.push(line.parse::<u64>().unwrap());
+        //output.push(scan_fmt!(line, "{} {}", char, char).unwrap());
     }
     output
 }
