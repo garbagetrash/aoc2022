@@ -1,83 +1,72 @@
 use scan_fmt::scan_fmt;
-use std::collections::VecDeque;
 
-static SETUP: [char; 56] = [
-    'B', 'S', 'V', 'Z', 'G', 'P', 'W', // 7
-    'J', 'V', 'B', 'C', 'Z', 'F', // 6
-    'V', 'L', 'M', 'H', 'N', 'Z', 'D', 'C', // 8
-    'L', 'D', 'M', 'Z', 'P', 'F', 'J', 'B', // 8
-    'V', 'F', 'C', 'G', 'J', 'B', 'Q', 'H', // 8
-    'G', 'F', 'Q', 'T', 'S', 'L', 'B', // 7
-    'L', 'G', 'C', 'Z', 'V', // 5
-    'N', 'L', 'G', // 3
-    'J', 'F', 'H', 'C', // 4
-];
-
-#[aoc_generator(day5)]
-fn load_input(input: &str) -> Vec<(usize, usize, usize)> {
-    let mut start = true;
-    let mut output = vec![];
-    for line in input.lines() {
-        if !start {
-            output.push(scan_fmt!(line, "move {} from {} to {}", usize, usize, usize).unwrap())
-        }
-        if line == "" {
-            start = false;
-        }
-    }
-    output
+struct Input {
+    setup: Vec<Vec<char>>,
+    instructions: Vec<(usize, usize, usize)>,
 }
 
-fn get_setup() -> Vec<VecDeque<char>> {
-    let mut output = vec![];
-    output.push(SETUP.iter().copied().take(7).collect());
-    output.push(SETUP.iter().copied().skip(7).take(6).collect());
-    output.push(SETUP.iter().copied().skip(13).take(8).collect());
-    output.push(SETUP.iter().copied().skip(21).take(8).collect());
-    output.push(SETUP.iter().copied().skip(29).take(8).collect());
-    output.push(SETUP.iter().copied().skip(37).take(7).collect());
-    output.push(SETUP.iter().copied().skip(44).take(5).collect());
-    output.push(SETUP.iter().copied().skip(49).take(3).collect());
-    output.push(SETUP.iter().copied().skip(52).take(4).collect());
+#[aoc_generator(day5)]
+fn load_input(input: &str) -> Input {
+    let mut start = true;
+    let mut instructions = vec![];
+    let mut start_end_idx = 0;
+    for (i, line) in input.lines().enumerate() {
+        if !start {
+            instructions
+                .push(scan_fmt!(line, "move {} from {} to {}", usize, usize, usize).unwrap())
+        }
+        if line.is_empty() {
+            start = false;
+            start_end_idx = i;
+        }
+    }
 
-    output
+    let peek: String = input.lines().take(1).collect();
+    let n_cols = (peek.len() + 1) / 4;
+    let mut setup: Vec<Vec<char>> = vec![vec![]; n_cols];
+    let start_lines: Vec<_> = input.lines().take(start_end_idx).collect();
+    for line in start_lines.into_iter().rev() {
+        for (i, c) in line.chars().skip(1).step_by(4).enumerate() {
+            if c != ' ' {
+                setup[i].push(c);
+            }
+        }
+    }
+    Input {
+        setup,
+        instructions,
+    }
 }
 
 #[aoc(day5, part1)]
-pub fn part1(input: &[(usize, usize, usize)]) -> String {
-    let mut setup = get_setup();
-    for line in input {
-        let (n_move, mut from, mut to) = line;
-        from -= 1;
-        to -= 1;
+fn part1(input: &Input) -> String {
+    let mut setup = input.setup.clone();
+    for (n_move, from, to) in &input.instructions {
         for _ in 0..*n_move {
-            let temp = setup[from].pop_back().unwrap();
-            setup[to].push_back(temp);
+            let temp = setup[from - 1].pop().unwrap();
+            setup[to - 1].push(temp);
         }
     }
 
     let mut output = String::new();
-    for i in 0..9 {
-        output.push(setup[i].pop_back().unwrap());
+    for mut col in setup {
+        output.push(col.pop().unwrap());
     }
     output
 }
 
 #[aoc(day5, part2)]
-pub fn part2(input: &[(usize, usize, usize)]) -> String {
-    let mut setup = get_setup();
-    for line in input {
-        let (n_move, mut from, mut to) = line;
-        from -= 1;
-        to -= 1;
-        let value = setup[from].len() - *n_move;
-        let mut temp = setup[from].split_off(value);
-        setup[to].append(&mut temp);
+fn part2(input: &Input) -> String {
+    let mut setup = input.setup.clone();
+    for (n_move, from, to) in &input.instructions {
+        let value = setup[from - 1].len() - n_move;
+        let mut temp = setup[from - 1].split_off(value);
+        setup[to - 1].append(&mut temp);
     }
 
     let mut output = String::new();
-    for i in 0..9 {
-        output.push(setup[i].pop_back().unwrap());
+    for mut col in setup {
+        output.push(col.pop().unwrap());
     }
     output
 }
