@@ -1,25 +1,44 @@
 use std::collections::{HashMap, HashSet, VecDeque};
-use regex::Regex;
 use scan_fmt::scan_fmt;
+use std::io::Write;
 
-#[aoc_generator(dayNN)]
-pub fn load_input(input: &str) -> Vec<u64> {
+type Input = usize;
+
+fn print(board: &Vec<Vec<usize>>, breakpoint: bool) {
+    for x in board {
+        for y in x {
+            print!(".");
+        }
+        println!();
+    }
+    println!();
+
+    if breakpoint {
+        // Get user input to continue to next step
+        std::io::stdout().flush();
+        let mut asdf = String::new();
+        std::io::stdin().read_line(&mut asdf);
+    }
+}
+
+#[aoc_generator(dayN)]
+pub fn load_input(input: &str) -> Vec<Input> {
     let mut output = vec![];
     for line in input.lines() {
-        output.push(line.parse::<u64>().unwrap());
+        output.push(line.parse::<Input>().unwrap());
         //output.push(scan_fmt!(line, "{} {}", char, char).unwrap());
     }
     output
 }
 
-#[aoc(dayNN, part1)]
-pub fn part1(input: &[u64]) -> u64 {
+#[aoc(dayN, part1)]
+pub fn part1(input: &[Input]) -> usize {
 
     0
 }
 
-#[aoc(dayNN, part2)]
-pub fn part2(input: &[u64]) -> u64 {
+#[aoc(dayN, part2)]
+pub fn part2(input: &[Input]) -> usize {
 
     0
 }
