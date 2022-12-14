@@ -1,7 +1,7 @@
+use std::cmp::Ordering;
 use std::collections::VecDeque;
-use std::io::{Write, stdout};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 enum Atom {
     List(Vec<Atom>),
     Number(usize),
@@ -23,12 +23,36 @@ fn simplify_list(tlist: &[Atom]) -> Atom {
     Atom::List(output)
 }
 
+impl Ord for Atom {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if let Some(b) = self.compare(other) {
+            if b {
+                Ordering::Less
+            } else {
+                Ordering::Greater
+            }
+        } else {
+            Ordering::Equal
+        }
+    }
+}
+
+impl PartialOrd for Atom {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if let Some(b) = self.compare(other) {
+            if b {
+                Some(Ordering::Less)
+            } else {
+                Some(Ordering::Greater)
+            }
+        } else {
+            Some(Ordering::Equal)
+        }
+    }
+}
+
 impl Atom {
     fn compare(&self, right: &Atom) -> Option<bool> {
-        println!();
-        println!("left: {:?}", self);
-        println!("right: {:?}", right);
-        stdout().flush();
         match (self, right) {
             (Atom::List(l), Atom::List(r)) => {
                 let mut ll = l.iter();
@@ -43,29 +67,27 @@ impl Atom {
                         return Some(true);
                     } else if rval.is_none() {
                         return Some(false);
+                    } else if let Some(answer) = (lval.unwrap()).compare(rval.unwrap()) {
+                        return Some(answer);
                     } else {
-                        if let Some(answer) = (lval.unwrap()).compare(rval.unwrap()) {
-                            return Some(answer);
-                        } else {
-                            // Try the next value
-                            continue;
-                        }
+                        // Try the next value
+                        continue;
                     }
                 }
-            },
+            }
             (Atom::Number(l), Atom::Number(r)) => {
                 if l == r {
-                    return None;
+                    None
                 } else {
-                    return Some(l < r);
+                    Some(l < r)
                 }
-            },
+            }
             (Atom::List(llist), Atom::Number(r)) => {
-                return Atom::List(llist.to_vec()).compare(&Atom::List(vec![Atom::Number(*r)]));
-            },
+                Atom::List(llist.to_vec()).compare(&Atom::List(vec![Atom::Number(*r)]))
+            }
             (Atom::Number(l), Atom::List(rlist)) => {
-                return Atom::List(vec![Atom::Number(*l)]).compare(&Atom::List(rlist.to_vec()));
-            },
+                Atom::List(vec![Atom::Number(*l)]).compare(&Atom::List(rlist.to_vec()))
+            }
             _ => None,
         }
     }
@@ -78,19 +100,19 @@ fn parse_string(s: &str) -> Atom {
         match ss {
             '[' => tokens.push(Atom::Left),
             ']' => {
-                if buildnum.len() > 0 {
+                if !buildnum.is_empty() {
                     tokens.push(Atom::Number(buildnum.parse::<usize>().unwrap()));
                     buildnum = String::new();
                 }
                 tokens.push(Atom::Right);
-            },
+            }
             ',' => {
-                if buildnum.len() > 0 {
+                if !buildnum.is_empty() {
                     tokens.push(Atom::Number(buildnum.parse::<usize>().unwrap()));
                     buildnum = String::new();
                 }
                 tokens.push(Atom::Comma);
-            },
+            }
             _ => buildnum.push(ss),
         }
     }
@@ -112,7 +134,7 @@ fn parse_string(s: &str) -> Atom {
                 let v: Vec<Atom> = temp.into_iter().rev().collect();
                 let a: Atom = simplify_list(&v);
                 stack.push_back(a);
-            },
+            }
             _ => stack.push_back(t),
         }
     }
@@ -167,7 +189,30 @@ fn part1(input: &[Input]) -> usize {
 
 #[aoc(day13, part2)]
 fn part2(input: &[Input]) -> usize {
-    0
+    let mut lines = vec![];
+    for pair in input {
+        lines.push(pair.p1.clone());
+        lines.push(pair.p2.clone());
+    }
+    lines.push(String::from("[[2]]"));
+    lines.push(String::from("[[6]]"));
+
+    let mut atoms = vec![];
+    for line in lines {
+        let atom = parse_string(&line);
+        atoms.push(atom);
+    }
+    let d1 = atoms[atoms.len() - 1].clone();
+    let d2 = atoms[atoms.len() - 2].clone();
+    atoms.sort();
+
+    let mut idxs = vec![];
+    for (i, atom) in atoms.iter().enumerate() {
+        if *atom == d1 || *atom == d2 {
+            idxs.push(i + 1);
+        }
+    }
+    idxs[0] * idxs[1]
 }
 
 #[cfg(test)]
@@ -186,7 +231,7 @@ mod test {
     fn test_part2() {
         let input = read_to_string("input/2022/13.txt").unwrap();
         let input = load_input(&input);
-        assert_eq!(part2(&input), 0);
+        assert_eq!(part2(&input), 140);
     }
 
     #[test]
