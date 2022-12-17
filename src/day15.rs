@@ -27,14 +27,14 @@ fn mdist(p1: (i64, i64), p2: (i64, i64)) -> i64 {
     (p1.0 - p2.0).abs() + (p1.1 - p2.1).abs()
 }
 
-fn empty_on_line(sensor: (i64, i64), beacon: (i64, i64), line: i64) -> Vec<(i64, i64)> {
+fn empty_on_line(sensor: (i64, i64), beacon: (i64, i64), line: i64) -> Vec<i64> {
     let mut output = vec![];
     let md = mdist(sensor, beacon);
     let yoffset = (sensor.1 - line).abs();
     let start = sensor.0 - md + yoffset;
     let end = sensor.0 + md - yoffset;
     for i in start..end {
-        output.push((i, line));
+        output.push(i);
     }
     output
 }
@@ -42,7 +42,7 @@ fn empty_on_line(sensor: (i64, i64), beacon: (i64, i64), line: i64) -> Vec<(i64,
 fn _part1(input: &Input, line: i64) -> i64 {
     let sensors = input.0.clone();
     let beacons = input.1.clone();
-    let empty: HashSet<(i64, i64)> = sensors
+    let empty: HashSet<i64> = sensors
         .into_iter()
         .zip(beacons.iter())
         .flat_map(|(sensor, beacon)| empty_on_line(sensor, *beacon, line))
