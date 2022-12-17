@@ -1,6 +1,7 @@
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
+use rayon::prelude::*;
 
 type Input = (String, i64, Vec<String>);
 
@@ -419,6 +420,7 @@ fn part2(input: &[Input]) -> i64 {
     loop {
         println!("iter {}", cntr);
         cntr += 1;
+        /*
         let mut new_paths = HashSet::new();
         for path in &valid_paths {
             let last_node = path.last().unwrap();
@@ -433,6 +435,26 @@ fn part2(input: &[Input]) -> i64 {
                 }
             }
         }
+        */
+
+        println!("valid_paths.len(): {}", valid_paths.len());
+
+        let new_paths: HashSet<Vec<PathState2>> = valid_paths.par_iter().map(|path| {
+            let last_node = path.last().unwrap();
+            let mut temp_paths = HashSet::new();
+            if let Some(states) = fwdprop_map.get(last_node) {
+                for state in states {
+                    let int_path: Vec<usize> = path.iter().map(|p| p.0).collect();
+                    if !int_path.contains(&state.0) {
+                        let mut tpath = path.clone();
+                        tpath.push(state.clone());
+                        temp_paths.insert(tpath);
+                    }
+                }
+            }
+            temp_paths
+        }).flatten().collect();
+
 
         if new_paths.is_subset(&valid_paths) {
             break;
