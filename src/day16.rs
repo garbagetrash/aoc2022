@@ -1,7 +1,7 @@
+use aoc_helpers::graph::{shortest_path, Connected};
 use itertools::Itertools;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
 
 type Input = (String, i64, Vec<String>);
 
@@ -46,6 +46,20 @@ impl UniqueMapping {
     }
 }
 
+fn path_to_string(path: &[usize], mapping: &UniqueMapping) -> String {
+    let strvec: Vec<_> = path.iter().map(|&x| mapping.int_to_word(x)).collect();
+    if strvec.len() == 0 {
+        String::new()
+    } else {
+        let mut output = String::from(strvec[0].to_string());
+        for node in &strvec[1..] {
+            output.push_str(" -> ");
+            output.push_str(node);
+        }
+        output
+    }
+}
+
 fn populate_word_mapping(lines: &[Input]) -> UniqueMapping {
     let mut mapping = UniqueMapping::new();
     for (node, _, _) in lines {
@@ -78,78 +92,19 @@ fn load_input(input: &str) -> Vec<Input> {
     output
 }
 
-trait Connected {
-    type Item;
-    fn get_neighbors(&self, node: &Self::Item) -> Vec<Self::Item>;
-}
+#[derive(Clone, Debug)]
+struct ValveIntMap(HashMap<usize, (i64, Vec<usize>, bool)>);
 
-fn shortest_path<T, U>(start: &T, end: &T, graph: &U) -> Option<Vec<T>>
-where
-    T: Clone + Eq + Hash,
-    U: Connected<Item = T>,
-{
-    let mut paths: HashMap<T, Vec<T>> = HashMap::new();
-    let mut investigate: HashSet<T> = HashSet::new();
-    let mut visited: HashSet<T> = HashSet::new();
-
-    investigate.insert(end.clone());
-    paths.insert(end.clone(), vec![end.clone()]);
-    loop {
-        let mut investigate_next: HashSet<T> = HashSet::new();
-
-        // Iterate over nodes to investigate
-        for trial in &investigate {
-            let neighbors = graph.get_neighbors(&trial);
-
-            // Iterate over neighbors of trial node
-            let curr_path = paths.get(trial).unwrap().clone();
-            for n in neighbors {
-                if let Some(p) = paths.get_mut(&n) {
-                    // If there exists a path to n already, see if this one is
-                    // shorter, insert if it is.
-                    if p.len() > curr_path.len() + 1 {
-                        let mut tpath = curr_path.clone();
-                        tpath.push(n.clone());
-                        *p = tpath;
-                    }
-                } else {
-                    // If there is no path to n already, use this one
-                    let mut tpath = curr_path.clone();
-                    tpath.push(n.clone());
-                    paths.insert(n.clone(), tpath);
-                }
-
-                // Visit n if we haven't already
-                if !visited.contains(&n) {
-                    investigate_next.insert(n);
-                }
-            }
-
-            // Put trial in visited if it isn't already there
-            visited.insert(trial.clone());
-        }
-
-        if investigate_next.is_empty() {
-            break;
-        } else {
-            investigate = investigate_next;
-        }
-    }
-
-    paths.get(&start).cloned()
-}
-
-impl Connected for HashMap<String, (i64, Vec<String>, bool)> {
-    type Item = String;
-    fn get_neighbors(&self, node: &Self::Item) -> Vec<Self::Item> {
-        self.get(node).unwrap().1.clone()
+impl ValveIntMap {
+    fn new() -> Self {
+        Self(HashMap::new())
     }
 }
 
-impl Connected for HashMap<usize, (i64, Vec<usize>, bool)> {
+impl Connected for ValveIntMap {
     type Item = usize;
     fn get_neighbors(&self, node: &Self::Item) -> Vec<Self::Item> {
-        self.get(node).unwrap().1.clone()
+        self.0.get(node).unwrap().1.clone()
     }
 }
 
@@ -195,9 +150,10 @@ fn path_to_state(
     rates: &HashMap<usize, i64>,
     nodes_enabled: &HashMap<usize, bool>,
     path_lengths: &HashMap<(usize, usize), i64>,
+    mapping: &UniqueMapping,
 ) -> State {
     let mut state = State {
-        current_node: 0, // TODO: This needs to map to "AA"
+        current_node: mapping.word_to_int("AA"),
         time_left: 30,
         total_value: 0,
         nodes_enabled: nodes_enabled.clone(),
@@ -219,7 +175,7 @@ fn paths_from_state(
     for node in nodes {
         let length = path_lengths.get(&(*node, state.0)).unwrap();
         let next_time = state.1 - length - 1;
-        if next_time >= 0 && next_time <= 30 {
+        if next_time >= 0 && next_time < state.1 {
             output.push((*node, next_time));
         }
     }
@@ -228,7 +184,7 @@ fn paths_from_state(
 
 fn create_path_lengths(
     possible_nodes: &HashSet<usize>,
-    nodes: &HashMap<usize, (i64, Vec<usize>, bool)>,
+    nodes: &ValveIntMap,
 ) -> HashMap<(usize, usize), i64> {
     let mut path_lengths = HashMap::new();
     for node1 in possible_nodes {
@@ -244,9 +200,9 @@ fn create_path_lengths(
 #[aoc(day16, part1)]
 fn part1(input: &[Input]) -> i64 {
     let mapping = populate_word_mapping(input);
-    let mut nodes = HashMap::new();
+    let mut nodes = ValveIntMap::new();
     for line in input {
-        nodes.insert(
+        nodes.0.insert(
             mapping.word_to_int(&line.0),
             (
                 line.1,
@@ -258,31 +214,29 @@ fn part1(input: &[Input]) -> i64 {
             ),
         );
     }
-    let mut rates: HashMap<usize, i64> = nodes.clone().iter().map(|(&k, v)| (k, v.0)).collect();
+    let mut rates: HashMap<usize, i64> = nodes.clone().0.iter().map(|(&k, v)| (k, v.0)).collect();
     let nodes_enabled: HashMap<usize, bool> =
-        nodes.clone().iter().map(|(&k, v)| (k, v.2)).collect();
-    let possible_nodes: HashSet<usize> = nodes.keys().cloned().collect();
+        nodes.clone().0.iter().map(|(&k, v)| (k, v.2)).collect();
+    let possible_nodes: HashSet<usize> = nodes.0.keys().cloned().collect();
     let path_lengths = create_path_lengths(&possible_nodes, &nodes);
     let good_nodes: HashSet<usize> = possible_nodes
         .clone()
         .into_iter()
-        .filter(|n| nodes.get(n).unwrap().0 > 0)
+        .filter(|n| nodes.0.get(n).unwrap().0 > 0)
         .collect();
 
     // For each useful end state...
     let mut fwdprop_map: HashMap<PathState, Vec<PathState>> = HashMap::new();
     for new_node in &good_nodes {
-        for time_left in 0..31 {
-            let end_state = (*new_node, time_left as i64);
-            let paths_from = paths_from_state(end_state, &good_nodes, &path_lengths);
-            fwdprop_map.insert(end_state, paths_from);
+        for time_left in 0..30 {
+            let state = (*new_node, time_left as i64);
+            let paths_from = paths_from_state(state, &good_nodes, &path_lengths);
+            fwdprop_map.insert(state, paths_from);
         }
 
-        for time_left in 0..31 {
-            let end_state = (mapping.word_to_int("AA"), time_left as i64);
-            let paths_from = paths_from_state(end_state, &good_nodes, &path_lengths);
-            fwdprop_map.insert(end_state, paths_from);
-        }
+        let state = (mapping.word_to_int("AA"), 30);
+        let paths_from = paths_from_state(state, &good_nodes, &path_lengths);
+        fwdprop_map.insert(state, paths_from);
     }
 
     let mut valid_paths = HashSet::<Vec<PathState>>::new();
@@ -295,9 +249,7 @@ fn part1(input: &[Input]) -> i64 {
         cntr += 1;
         let mut new_paths = HashSet::new();
         for path in &valid_paths {
-            //println!("propagating path: {:?}", path);
             let last_node = path.last().unwrap();
-            //println!("last_node: {:?}", last_node);
             if let Some(states) = fwdprop_map.get(&last_node) {
                 for state in states {
                     let int_path: Vec<usize> = path.iter().map(|p| p.0).collect();
@@ -324,45 +276,23 @@ fn part1(input: &[Input]) -> i64 {
     let mut values = vec![];
     for path in valid_paths {
         let int_path: Vec<usize> = path.iter().skip(1).map(|p| p.0).collect();
-        let state = path_to_state(&int_path, &rates, &nodes_enabled, &path_lengths);
+        let state = path_to_state(&int_path, &rates, &nodes_enabled, &path_lengths, &mapping);
         values.push((state.total_value, int_path));
     }
 
     values.sort_by(|a, b| a.0.cmp(&b.0));
     for v in &values {
-        println!("{}, {:?}", v.0, v.1);
+        println!("{}, {}", v.0, path_to_string(&v.1, &mapping));
     }
     values.last().unwrap().0
 }
 
-type PathState2 = (usize, i64, usize, i64);
-
-fn paths_from_state2(
-    state: PathState2,
-    nodes: &HashSet<usize>,
-    path_lengths: &HashMap<(usize, usize), i64>,
-) -> Vec<PathState2> {
-    let mut output = vec![];
-    for node1 in nodes {
-        for node2 in nodes {
-            let length1 = path_lengths.get(&(*node1, state.0)).unwrap();
-            let length2 = path_lengths.get(&(*node2, state.2)).unwrap();
-            let time1 = state.1 - length1 - 1;
-            let time2 = state.3 - length2 - 1;
-            if time1 >= 0 && time1 <= 30 && time2 >= 0 && time2 <= 30 {
-                output.push((*node1, time1, *node2, time2));
-            }
-        }
-    }
-    output
-}
-
 #[aoc(day16, part2)]
 fn part2(input: &[Input]) -> i64 {
-    let mut nodes = HashMap::new();
     let mapping = populate_word_mapping(input);
+    let mut valve_map = ValveIntMap::new();
     for line in input {
-        nodes.insert(
+        valve_map.0.insert(
             mapping.word_to_int(&line.0),
             (
                 line.1,
@@ -374,113 +304,18 @@ fn part2(input: &[Input]) -> i64 {
             ),
         );
     }
-    let rates: HashMap<usize, i64> = nodes.clone().iter().map(|(&k, v)| (k, v.0)).collect();
+    let mut rates: HashMap<usize, i64> =
+        valve_map.clone().0.iter().map(|(&k, v)| (k, v.0)).collect();
     let nodes_enabled: HashMap<usize, bool> =
-        nodes.clone().iter().map(|(&k, v)| (k, v.2)).collect();
-    let possible_nodes: HashSet<usize> = nodes.keys().copied().collect();
-    let path_lengths = create_path_lengths(&possible_nodes, &nodes);
+        valve_map.clone().0.iter().map(|(&k, v)| (k, v.2)).collect();
+    let possible_nodes: HashSet<usize> = valve_map.0.keys().cloned().collect();
+    let path_lengths = create_path_lengths(&possible_nodes, &valve_map);
     let good_nodes: HashSet<usize> = possible_nodes
         .clone()
         .into_iter()
-        .filter(|n| nodes.get(n).unwrap().0 > 0)
+        .filter(|n| valve_map.0.get(n).unwrap().0 > 0)
         .collect();
-
-    // For each useful end state...
-    let mut fwdprop_map: HashMap<PathState2, Vec<PathState2>> = HashMap::new();
-    for node1 in &good_nodes {
-        for node2 in &good_nodes {
-            for t1 in 0..27 {
-                for t2 in 0..27 {
-                    let end_state = (*node1, t1 as i64, *node2, t2 as i64);
-                    let paths_from = paths_from_state2(end_state, &good_nodes, &path_lengths);
-                    fwdprop_map.insert(end_state, paths_from);
-                }
-            }
-
-            for t1 in 0..27 {
-                for t2 in 0..27 {
-                    let end_state = (
-                        mapping.word_to_int("AA"),
-                        t1 as i64,
-                        mapping.word_to_int("AA"),
-                        t2 as i64,
-                    );
-                    let paths_from = paths_from_state2(end_state, &good_nodes, &path_lengths);
-                    fwdprop_map.insert(end_state, paths_from);
-                }
-            }
-        }
-    }
-
-    let mut valid_paths = HashSet::<Vec<PathState2>>::new();
-    let start = (mapping.word_to_int("AA"), 26, mapping.word_to_int("AA"), 26);
-    valid_paths.insert(vec![start]);
-
-    let mut cntr = 0;
-    loop {
-        println!("iter {}", cntr);
-        cntr += 1;
-        /*
-        let mut new_paths = HashSet::new();
-        for path in &valid_paths {
-            let last_node = path.last().unwrap();
-            if let Some(states) = fwdprop_map.get(last_node) {
-                for state in states {
-                    let int_path: Vec<usize> = path.iter().map(|p| p.0).collect();
-                    if !int_path.contains(&state.0) {
-                        let mut tpath = path.clone();
-                        tpath.push(state.clone());
-                        new_paths.insert(tpath);
-                    }
-                }
-            }
-        }
-        */
-
-        println!("valid_paths.len(): {}", valid_paths.len());
-
-        let new_paths: HashSet<Vec<PathState2>> = valid_paths
-            .par_iter()
-            .map(|path| {
-                let last_node = path.last().unwrap();
-                let mut temp_paths = HashSet::new();
-                if let Some(states) = fwdprop_map.get(last_node) {
-                    for state in states {
-                        let int_path: Vec<usize> = path.iter().map(|p| p.0).collect();
-                        if !int_path.contains(&state.0) {
-                            let mut tpath = path.clone();
-                            tpath.push(state.clone());
-                            temp_paths.insert(tpath);
-                        }
-                    }
-                }
-                temp_paths
-            })
-            .flatten()
-            .collect();
-
-        if new_paths.is_subset(&valid_paths) {
-            break;
-        } else {
-            for path in new_paths {
-                valid_paths.insert(path);
-            }
-        }
-    }
-
-    println!("valid_paths.len(): {}", valid_paths.len());
-
-    let mut values = vec![];
-    for path in valid_paths {
-        let int_path1: Vec<usize> = path.iter().skip(1).map(|p| p.0).collect();
-        let int_path2: Vec<usize> = path.iter().skip(1).map(|p| p.2).collect();
-        let state1 = path_to_state(&int_path1, &rates, &nodes_enabled, &path_lengths);
-        let state2 = path_to_state(&int_path2, &rates, &nodes_enabled, &path_lengths);
-        values.push(state1.total_value + state2.total_value);
-    }
-
-    values.sort();
-    *values.last().unwrap()
+    0
 }
 
 #[cfg(test)]

@@ -58,7 +58,7 @@ impl RockIter {
 impl Iterator for RockIter {
     type Item = Rock;
     fn next(&mut self) -> Option<Self::Item> {
-        let output = Some(self.rocks[self.idx].clone());
+        let output = Some(self.rocks[self.idx]);
         self.idx += 1;
         self.idx %= 5;
         output
