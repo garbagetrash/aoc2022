@@ -52,6 +52,7 @@ impl PartialOrd for Atom {
 }
 
 impl Atom {
+    #[allow(clippy::unnecessary_unwrap)]
     fn compare(&self, right: &Atom) -> Option<bool> {
         match (self, right) {
             (Atom::List(l), Atom::List(r)) => {
