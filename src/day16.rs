@@ -31,7 +31,7 @@ impl UniqueMapping {
 
     fn word_to_int(&self, word: &str) -> usize {
         if let Some(int) = self.word_to_int_map.get(word) {
-            return *int;
+            *int
         } else {
             panic!("word {} not found in mapping!", word);
         }
@@ -39,7 +39,7 @@ impl UniqueMapping {
 
     fn int_to_word(&self, int: usize) -> String {
         if let Some(word) = self.int_to_word_map.get(&int) {
-            return word.to_string();
+            word.to_string()
         } else {
             panic!("int {} not found in mapping!", int);
         }
@@ -48,10 +48,10 @@ impl UniqueMapping {
 
 fn path_to_string(path: &[usize], mapping: &UniqueMapping) -> String {
     let strvec: Vec<_> = path.iter().map(|&x| mapping.int_to_word(x)).collect();
-    if strvec.len() == 0 {
+    if strvec.is_empty() {
         String::new()
     } else {
-        let mut output = String::from(strvec[0].to_string());
+        let mut output = strvec[0].to_string();
         for node in &strvec[1..] {
             output.push_str(" -> ");
             output.push_str(node);
@@ -72,14 +72,14 @@ fn populate_word_mapping(lines: &[Input]) -> UniqueMapping {
 fn load_input(input: &str) -> Vec<Input> {
     let mut output = vec![];
     for line in input.lines() {
-        let words: Vec<&str> = line.split(" ").collect();
+        let words: Vec<&str> = line.split(' ').collect();
         let valve = words[1].to_string();
         let rate = words[4];
         let rate: Vec<_> = rate.split('=').collect();
         let rate: Vec<_> = rate[1].split(';').collect();
         let rate = rate[0].parse::<i64>().unwrap();
         let others: Vec<_> = words[9..]
-            .into_iter()
+            .iter()
             .map(|s| {
                 let temp: Vec<_> = s.split(',').collect();
                 temp[0].to_string()
@@ -132,14 +132,12 @@ fn goto_and_enable_node(
     rates: &HashMap<usize, i64>,
     path_lengths: &HashMap<(usize, usize), i64>,
 ) {
-    let time_walking = path_lengths
-        .get(&(node.clone(), state.current_node.clone()))
-        .unwrap();
+    let time_walking = path_lengths.get(&(node, state.current_node)).unwrap();
     let this_time_left = state.time_left - time_walking - 1;
     let rate = *rates.get(&node).unwrap();
     let value = value_added(node, this_time_left, rate, &state.nodes_enabled);
 
-    state.current_node = node.clone();
+    state.current_node = node;
     *state.nodes_enabled.get_mut(&state.current_node).unwrap() = true;
     state.total_value += value;
     state.time_left = this_time_left;
@@ -214,13 +212,12 @@ fn part1(input: &[Input]) -> i64 {
             ),
         );
     }
-    let mut rates: HashMap<usize, i64> = nodes.clone().0.iter().map(|(&k, v)| (k, v.0)).collect();
+    let rates: HashMap<usize, i64> = nodes.clone().0.iter().map(|(&k, v)| (k, v.0)).collect();
     let nodes_enabled: HashMap<usize, bool> =
         nodes.clone().0.iter().map(|(&k, v)| (k, v.2)).collect();
     let possible_nodes: HashSet<usize> = nodes.0.keys().cloned().collect();
     let path_lengths = create_path_lengths(&possible_nodes, &nodes);
     let good_nodes: HashSet<usize> = possible_nodes
-        .clone()
         .into_iter()
         .filter(|n| nodes.0.get(n).unwrap().0 > 0)
         .collect();
@@ -250,12 +247,11 @@ fn part1(input: &[Input]) -> i64 {
         let mut new_paths = HashSet::new();
         for path in &valid_paths {
             let last_node = path.last().unwrap();
-            if let Some(states) = fwdprop_map.get(&last_node) {
+            if let Some(states) = fwdprop_map.get(last_node) {
                 for state in states {
-                    let int_path: Vec<usize> = path.iter().map(|p| p.0).collect();
-                    if !int_path.contains(&state.0) {
+                    if !path.iter().map(|p| p.0).contains(&state.0) {
                         let mut tpath = path.clone();
-                        tpath.push(state.clone());
+                        tpath.push(*state);
                         new_paths.insert(tpath);
                     }
                 }
@@ -304,14 +300,12 @@ fn part2(input: &[Input]) -> i64 {
             ),
         );
     }
-    let mut rates: HashMap<usize, i64> =
-        valve_map.clone().0.iter().map(|(&k, v)| (k, v.0)).collect();
+    let rates: HashMap<usize, i64> = valve_map.clone().0.iter().map(|(&k, v)| (k, v.0)).collect();
     let nodes_enabled: HashMap<usize, bool> =
         valve_map.clone().0.iter().map(|(&k, v)| (k, v.2)).collect();
     let possible_nodes: HashSet<usize> = valve_map.0.keys().cloned().collect();
     let path_lengths = create_path_lengths(&possible_nodes, &valve_map);
     let good_nodes: HashSet<usize> = possible_nodes
-        .clone()
         .into_iter()
         .filter(|n| valve_map.0.get(n).unwrap().0 > 0)
         .collect();
