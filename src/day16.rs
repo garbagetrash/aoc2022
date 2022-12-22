@@ -283,6 +283,84 @@ fn part1(input: &[Input]) -> i64 {
     values.last().unwrap().0
 }
 
+#[derive(Clone, Copy, Debug)]
+struct Agent<'a> {
+    node: usize,
+    goal: Option<usize>,
+    time_left: i64,
+    valve_map: &'a ValveIntMap,
+    value: i64,
+}
+
+impl<'a> Agent<'a> {
+    fn new(time_left: i64, start_node: usize, valve_map: &'a ValveIntMap) -> Self {
+        Self {
+            node: start_node,
+            goal: None,
+            time_left,
+            valve_map: valve_map,
+            value: 0,
+        }
+    }
+
+    /// Returns true if new goal needs set, false otherwise
+    fn time_step(&mut self, valves_enabled: &mut HashMap<usize, bool>) -> bool {
+        if self.time_left > 0 {
+            if Some(self.node) == self.goal && !valves_enabled.get(&self.node).unwrap() {
+                // If we're at the goal and it's not already on, turn on valve
+                // and get our value for it.
+                *valves_enabled.get_mut(&self.node).unwrap() = true;
+                let new_value = (self.time_left - 1) * self.valve_map.0.get(&self.node).unwrap().0;
+                self.value += new_value;
+                self.time_left -= 1;
+                return true;
+            } else if self.goal.is_some() {
+                // Move towards goal if not there
+                if let Some(path) = shortest_path(&self.goal.unwrap(), &self.node, self.valve_map) {
+                    self.node = path[1];
+                } else {
+                    panic!("no path from node to goal");
+                }
+            }
+            self.time_left -= 1;
+        }
+        false
+    }
+}
+
+type Plan = (Vec<usize>, Vec<usize>);
+
+fn simulate_path2(
+    plan: &Plan,
+    mapping: &UniqueMapping,
+    valve_map: &ValveIntMap,
+    valves_enabled: &HashMap<usize, bool>,
+) -> i64 {
+    let mut p1 = Agent::new(26, mapping.word_to_int("AA"), valve_map);
+    let mut path1_iter = plan.0.iter().copied();
+    p1.goal = path1_iter.next();
+    p1.goal = path1_iter.next();
+
+    let mut p2 = Agent::new(26, mapping.word_to_int("AA"), valve_map);
+    let mut path2_iter = plan.1.iter().copied();
+    p2.goal = path2_iter.next();
+    p2.goal = path2_iter.next();
+
+    let mut temp_valves_enabled = valves_enabled.clone();
+
+    for t in 0..26 {
+        if p1.time_step(&mut temp_valves_enabled) {
+            p1.goal = path1_iter.next();
+        }
+        if p2.time_step(&mut temp_valves_enabled) {
+            p2.goal = path2_iter.next();
+        }
+    }
+
+    // Return total value
+    p1.value + p2.value
+}
+
 #[aoc(day16, part2)]
 fn part2(input: &[Input]) -> i64 {
     let mapping = populate_word_mapping(input);
@@ -301,7 +379,7 @@ fn part2(input: &[Input]) -> i64 {
         );
     }
     let rates: HashMap<usize, i64> = valve_map.clone().0.iter().map(|(&k, v)| (k, v.0)).collect();
-    let nodes_enabled: HashMap<usize, bool> =
+    let valves_enabled: HashMap<usize, bool> =
         valve_map.clone().0.iter().map(|(&k, v)| (k, v.2)).collect();
     let possible_nodes: HashSet<usize> = valve_map.0.keys().cloned().collect();
     let path_lengths = create_path_lengths(&possible_nodes, &valve_map);
@@ -309,6 +387,43 @@ fn part2(input: &[Input]) -> i64 {
         .into_iter()
         .filter(|n| valve_map.0.get(n).unwrap().0 > 0)
         .collect();
+
+    // For one of us, choose some routes
+    let mut all_paths: HashMap<Plan, i64> = HashMap::new();
+    let combos_5: Vec<Vec<usize>> = good_nodes.iter().copied().combinations(5).collect();
+    println!("combos_5 done");
+    let c5_complement: Vec<Vec<usize>> = combos_5.iter().map(|c5| {
+        good_nodes.iter().copied().filter(|x| !c5.contains(x)).collect()
+    }).collect();
+    println!("combos_5 complement done");
+
+    let mut cntr = 0;
+    for (set, cset) in combos_5.iter().zip(c5_complement.iter()) {
+        println!("cntr: {}", cntr);
+        cntr += 1;
+        let mut paths1: Vec<Vec<usize>> = set.iter().copied().permutations(5).collect();
+        let mut paths2: Vec<Vec<usize>> = cset.iter().copied().permutations(5).collect();
+
+        paths1.insert(0, mapping.word_to_int("AA"));
+        paths2.insert(0, mapping.word_to_int("AA"));
+
+        for p1 in &paths1 {
+            for p2 in &paths2 {
+                let value = simulate_path2(&(p1.to_vec(), p2.to_vec()), &mapping, &valve_map, &valves_enabled);
+                all_paths.insert((p1.clone(), p2.clone()), value);
+            }
+        }
+    }
+    // The example inputs
+    /*
+    let path1 = vec!["AA", "JJ", "BB", "CC"].iter().map(|x| mapping.word_to_int(x)).collect();
+    let path2 = vec!["AA", "DD", "HH", "EE"].iter().map(|x| mapping.word_to_int(x)).collect();
+    let plan = (path1, path2);
+    let value = simulate_path2(&plan, &mapping, &valve_map, &valves_enabled);
+    println!("Test value: {}", value);
+    */
+
+    let all_paths: Vec<(Plan, i64)> = all_paths.into_iter().collect();
     0
 }
 
