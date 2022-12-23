@@ -37,6 +37,7 @@ fn ll_find<T: PartialEq>(list: &LinkedList<T>, value: T) -> usize {
 fn ll_print<T: Debug>(list: &LinkedList<T>) {
     let mut nid = list.head.unwrap();
     let first_id = nid;
+    println!();
     loop {
         print!("{:?} ", list.data[nid].value);
         if let Some(nnid) = list.data[nid].next() {
@@ -46,6 +47,7 @@ fn ll_print<T: Debug>(list: &LinkedList<T>) {
             break;
         }
     }
+    println!();
 }
 
 // 1467 is too low
@@ -65,7 +67,7 @@ fn part1(input: &[Input]) -> i64 {
     list.data[tail_id].tail = Some(head_id);
 
     for value in input {
-        //ll_print(&list);
+        ll_print(&list);
         let mut nid = ll_find(&list, *value);
         //println!("nid: {}", nid);
         nid = list.data[nid].prev().unwrap();
@@ -88,7 +90,7 @@ fn part1(input: &[Input]) -> i64 {
         }
     }
 
-    //ll_print(&list);
+    ll_print(&list);
 
     let mut nid = ll_find(&list, 0);
     let mut nums = vec![];
