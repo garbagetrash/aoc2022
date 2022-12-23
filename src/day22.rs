@@ -25,7 +25,10 @@ impl Player {
     fn new(map: &HashMap<(usize, usize), Tile>) -> Self {
         for col in 1..205 {
             if let Some(_) = map.get(&(1, col)) {
-                return Self { dir: Direction::East, pos: (1, col) };
+                return Self {
+                    dir: Direction::East,
+                    pos: (1, col),
+                };
             }
         }
         unreachable!();
